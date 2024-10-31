@@ -1,0 +1,165 @@
+local RunService = game:GetService("RunService")
+local TweenService = game:GetService("TweenService")
+local HttpService = game:GetService("HttpService")
+local Players = game:GetService("Players")
+
+-- Webhook URL (ใส่ URL Webhook ของคุณ)
+local webhookURL = "https://discord.com/api/webhooks/1301505071397339157/uEWcLNhMxmd77fQpSAhrbnlOptUssgO8GPzGqFLCGJnfnNdl6gMRCz1RK1aeQffg8NL_"
+
+-- Configuration settings
+local config = {
+    enablePlatform = true,       -- เปิด/ปิดการสร้าง platform
+    enableTargetFinding = true,  -- เปิด/ปิดการค้นหาเป้าหมาย
+    enableFallback = true,       -- เปิด/ปิดการตรวจสอบตำแหน่ง fallback
+    enableWebhookAlert = true,   -- เปิด/ปิดการแจ้งเตือน Webhook
+}
+
+-- Player and character setup
+local player = Players.LocalPlayer
+local character = player.Character or player.CharacterAdded:Wait()
+local humanoidRootPart = character:WaitForChild("HumanoidRootPart")
+
+-- Set initial CFrame for the character
+local initialCFrame = CFrame.new(2817.91724, 130.49205, 2692.14746)
+humanoidRootPart.CFrame = initialCFrame -- Set the character's starting position
+
+local platform
+local lastFallbackTime = 0
+local fallbackDelay = 5 -- Seconds between fallback attempts
+
+-- Fallback position
+local fallbackPosition = CFrame.new(2817.91724, 130.49205, 2692.14746)
+local nearbyDistance = 40
+
+-- Send message to webhook
+local function sendWebhookMessage(targetName)
+    if config.enableWebhookAlert then
+        local data = {
+            ["username"] = "Alert Bot",
+            ["content"] = "พบเป้าหมาย: " .. targetName .. "!"
+        }
+
+        local jsonData = HttpService:JSONEncode(data)
+        HttpService:PostAsync(webhookURL, jsonData, Enum.HttpContentType.ApplicationJson)
+    end
+end
+
+-- Create a platform part if it doesn't exist
+local function createPlatform()
+    if config.enablePlatform and not platform then
+        platform = Instance.new("Part")
+        platform.Size = Vector3.new(10, 1, 10)
+        platform.Anchored = true
+        platform.Transparency = 0.5
+        platform.Parent = workspace
+    end
+end
+
+-- Position the platform just above the target part
+local function placePlatformAboveTarget(target)
+    if platform and target then
+        platform.CFrame = target.CFrame + Vector3.new(0, target.Size.Y / 2 + 4, 0)
+    end
+end
+
+-- Tween the character close to the platform's position, then teleport onto it
+local function tweenCharacterToPlatform(targetCFrame)
+    local tweenInfo = TweenInfo.new(2, Enum.EasingStyle.Linear, Enum.EasingDirection.InOut)
+    local tween = TweenService:Create(humanoidRootPart, tweenInfo, { CFrame = targetCFrame })
+
+    tween.Completed:Connect(function()
+        humanoidRootPart.CFrame = platform.CFrame + Vector3.new(0, 4, 0) -- Teleport to exact position on platform
+    end)
+
+    tween:Play()
+end
+
+-- Check if there is a player nearby the fallback position
+local function isPlayerNearby(cframe)
+    for _, otherPlayer in pairs(Players:GetPlayers()) do
+        if otherPlayer ~= player and otherPlayer.Character and otherPlayer.Character:FindFirstChild("HumanoidRootPart") then
+            local distance = (otherPlayer.Character.HumanoidRootPart.Position - cframe.Position).Magnitude
+            if distance < nearbyDistance then
+                return true
+            end
+        end
+    end
+    return false
+end
+
+-- Tween character to fallback position
+local function tweenToFallbackPosition()
+    local tweenInfo = TweenInfo.new(3, Enum.EasingStyle.Linear, Enum.EasingDirection.InOut)
+    local tween = TweenService:Create(humanoidRootPart, tweenInfo, { CFrame = fallbackPosition })
+    tween:Play()
+end
+
+-- Main loop with priority-based target checking
+RunService.RenderStepped:Connect(function()
+    if not config.enableTargetFinding then return end -- If target finding is disabled, skip this function
+
+    -- List of targets in order of priority
+    local targets = {
+        {name = "FischFright24", findFunc = function() 
+            return workspace:FindFirstChild("zones") 
+                and workspace.zones:FindFirstChild("fishing") 
+                and workspace.zones.fishing:FindFirstChild("FischFright24") 
+        end},
+        {name = "Whale Shark", findFunc = function() 
+            return workspace:FindFirstChild("zones") 
+                and workspace.zones:FindFirstChild("fishing") 
+                and workspace.zones.fishing:FindFirstChild("Whale Shark") 
+        end},
+        {name = "Great White Shark", findFunc = function() 
+            return workspace:FindFirstChild("zones") 
+                and workspace.zones:FindFirstChild("fishing") 
+                and workspace.zones.fishing:FindFirstChild("Great White Shark") 
+        end},
+        {name = "Isobade", findFunc = function() return workspace:FindFirstChild("Isobade") end},
+    }
+
+    -- Loop through until a target is found
+    while true do
+        local targetFound = false
+
+        -- Check each target in order of priority
+        for _, target in ipairs(targets) do
+            local targetObject = target.findFunc()
+            if targetObject then
+                createPlatform()
+                placePlatformAboveTarget(targetObject)
+                tweenCharacterToPlatform(platform.CFrame) -- Tween to the platform position
+                sendWebhookMessage(target.name) -- Send alert to webhook
+                targetFound = true
+                break -- Exit loop after handling the first target
+            end
+        end
+
+        if targetFound then
+            break -- Exit while loop if a target was found
+        end
+
+        -- No targets found; perform fallback check if enabled
+        if config.enableFallback then
+            print("No target found. Checking fallback proximity...")
+
+            if platform then
+                platform:Destroy()
+                platform = nil
+            end
+
+            -- Proximity check before fallback
+            if tick() - lastFallbackTime > fallbackDelay then
+                if isPlayerNearby(fallbackPosition) then
+                    print("Nearby player detected. Fallback deferred.")
+                else
+                    print("No players nearby. Executing fallback.")
+                    tweenToFallbackPosition()
+                    lastFallbackTime = tick()
+                end
+            end
+        end
+
+        wait(1) -- Delay before the next loop iteration
+    end
+end)
