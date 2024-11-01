@@ -4,7 +4,7 @@ local HttpService = game:GetService("HttpService")
 local Players = game:GetService("Players")
 
 -- Webhook URL (ใส่ URL Webhook ของคุณ)
-local webhookURL = ""
+local webhookURL = "https://discord.com/api/webhooks/1301505071397339157/uEWcLNhMxmd77fQpSAhrbnlOptUssgO8GPzGqFLCGJnfnNdl6gMRCz1RK1aeQffg8NL_"
 
 -- Configuration settings
 local config = {
@@ -12,6 +12,7 @@ local config = {
     enableTargetFinding = true,  -- เปิด/ปิดการค้นหาเป้าหมาย
     enableFallback = true,       -- เปิด/ปิดการตรวจสอบตำแหน่ง fallback
     enableWebhookAlert = true,   -- เปิด/ปิดการแจ้งเตือน Webhook
+    enableNoClip = true          -- เปิด/ปิดการ noclip ทุก part ยกเว้น platform
 }
 
 -- Player and character setup
@@ -31,6 +32,17 @@ local fallbackDelay = 5 -- Seconds between fallback attempts
 local fallbackPosition = CFrame.new(2817.91724, 130.49205, 2692.14746)
 local nearbyDistance = 40
 
+-- Enable noclip for all parts except platform
+local function enableNoClip()
+    if config.enableNoClip then
+        for _, part in pairs(workspace:GetDescendants()) do
+            if part:IsA("Part") and part ~= platform then
+                part.CanCollide = false
+            end
+        end
+    end
+end
+
 -- Send message to webhook
 local function sendWebhookMessage(targetName)
     if config.enableWebhookAlert then
@@ -38,7 +50,6 @@ local function sendWebhookMessage(targetName)
             ["username"] = "Alert Bot",
             ["content"] = "พบเป้าหมาย: " .. targetName .. "!"
         }
-
         local jsonData = HttpService:JSONEncode(data)
         HttpService:PostAsync(webhookURL, jsonData, Enum.HttpContentType.ApplicationJson)
     end
@@ -115,7 +126,7 @@ RunService.RenderStepped:Connect(function()
                 and workspace.zones:FindFirstChild("fishing") 
                 and workspace.zones.fishing:FindFirstChild("Great White Shark") 
         end},
-        {name = "Isonade", findFunc = function() return workspace:FindFirstChild("Isonade") end},
+        {name = "Isobade", findFunc = function() return workspace:FindFirstChild("Isobade") end},
     }
 
     -- Loop through until a target is found
@@ -163,3 +174,6 @@ RunService.RenderStepped:Connect(function()
         wait(1) -- Delay before the next loop iteration
     end
 end)
+
+-- Enable noclip for all parts except the platform initially
+enableNoClip()
