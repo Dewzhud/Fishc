@@ -376,9 +376,9 @@ while Running and i <= #lines do
         local ok, err = pcall(actions[d.Category], d)
         print(ok and "Played" or "FAILED", d.Category, d.Time, ok and "" or err)
         i += 1
-        task.wait(0.1)
+        task.wait()
     else
-        task.wait(0.1)
+        task.wait()
     end
 end
 
