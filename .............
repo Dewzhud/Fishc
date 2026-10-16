@@ -16,6 +16,7 @@ local User = getgenv().Config or {}
 local FILE = "Wanda4X/" .. (User.FileName or "recorder.lua")
 local CLICK_OFFSET_X = User.ClickOffsetX or 0
 local CLICK_OFFSET_Y = User.ClickOffsetY or 55
+local AUTO_PLAY_AGAIN = User.AutoPlayAgain == true
 
 if not isfile(FILE) then
     getgenv().WandaPlaybackRunning = false
@@ -334,8 +335,12 @@ actions.TowerSell = function(d)
     send("TowerSell", { Id = id })
 end
 
-actions.WaveSkip  = function() send("WaveSkip") end
-actions.PlayAgain = function() send("PlayAgain") end
+actions.WaveSkip = function() send("WaveSkip") end
+
+actions.PlayAgain = function()
+    if AUTO_PLAY_AGAIN then return end   -- the FinalUI watcher handles it
+    send("PlayAgain")
+end
 
 actions.AutoSkip = function(d)
     local btn, ui2 = getAutoSkip()
@@ -353,6 +358,40 @@ actions.AutoSkip = function(d)
         task.wait(0.4)
     end
     warn("  AutoSkip still not", d.Value)
+end
+
+---------------------------------------------------------------------
+-- AUTO PLAY AGAIN (watch GameUI.FinalUI.Visible)
+---------------------------------------------------------------------
+if AUTO_PLAY_AGAIN then
+    -- remove the watcher from a previous run so it never fires twice
+    if getgenv().WandaFinalConn then
+        pcall(function() getgenv().WandaFinalConn:Disconnect() end)
+    end
+
+    task.spawn(function()
+        local final = Players.LocalPlayer:WaitForChild("PlayerGui")
+            :WaitForChild("GameUI"):WaitForChild("FinalUI")
+
+        local busy = false
+
+        local function check()
+            if busy or not final.Visible then return end
+            busy = true
+
+            task.wait(1)   -- let the end screen finish loading
+            if final.Visible then
+                local ok, err = pcall(send, "PlayAgain")
+                print(ok and "Auto PlayAgain" or "PlayAgain FAILED", ok and "" or err)
+                task.wait(3)   -- do not fire again right away
+            end
+
+            busy = false
+        end
+
+        getgenv().WandaFinalConn = final:GetPropertyChangedSignal("Visible"):Connect(check)
+        check()   -- in case it is already visible
+    end)
 end
 
 ---------------------------------------------------------------------
