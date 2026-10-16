@@ -17,7 +17,7 @@ local FILE = "Wanda4X/" .. (User.FileName or "recorder.lua")
 local CLICK_OFFSET_X = User.ClickOffsetX or 0
 local CLICK_OFFSET_Y = User.ClickOffsetY or 55
 local AUTO_PLAY_AGAIN = User.AutoPlayAgain == true
-
+local ResDlay = User.Delay or 0.5
 if not isfile(FILE) then
     getgenv().WandaPlaybackRunning = false
     return warn("File not found:", FILE)
@@ -415,9 +415,9 @@ while Running and i <= #lines do
         local ok, err = pcall(actions[d.Category], d)
         print(ok and "Played" or "FAILED", d.Category, d.Time, ok and "" or err)
         i += 1
-        task.wait(.5)
+        task.wait(ResDlay)
     else
-        task.wait(.5)
+        task.wait(ResDlay)
     end
 end
 
