@@ -112,10 +112,6 @@ gen["WaveSkip"] = function(Args, Time)
     append(`WaveSkip \{ Time = "{Time}"}`)
 end
 
-gen["PlayAgain"] = function(Args, Time)
-    append(`PlayAgain \{ Time = "{Time}"}`)
-end
-
 gen["ModeVote"] = function(Args, Time)
     append(`ModeVote \{ Value = "{Args[1]}", Time = "{Time}"}`)
 end
