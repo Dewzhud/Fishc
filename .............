@@ -11,13 +11,15 @@ if getgenv().WandaPlaybackRunning then
 end
 getgenv().WandaPlaybackRunning = true
 
+local plr = Players.LocalPlayer
 local User = getgenv().Config or {}
 
 local FILE = "Wanda4X/" .. (User.FileName or "recorder.lua")
 local CLICK_OFFSET_X = User.ClickOffsetX or 0
 local CLICK_OFFSET_Y = User.ClickOffsetY or 55
 local AUTO_PLAY_AGAIN = User.AutoPlayAgain == true
-local ResDlay = User.Delay or 0.5
+local ResDlay = User.Delay or 0.5   -- pause after each action
+
 if not isfile(FILE) then
     getgenv().WandaPlaybackRunning = false
     return warn("File not found:", FILE)
@@ -33,7 +35,7 @@ task.spawn(function()
     local BLACK = Color3.fromRGB(0, 0, 0)
     local WHITE = Color3.fromRGB(255, 255, 255)
 
-    local parent = (gethui and gethui()) or Players.LocalPlayer:WaitForChild("PlayerGui")
+    local parent = (gethui and gethui()) or plr:WaitForChild("PlayerGui")
 
     local gui = Instance.new("ScreenGui")
     gui.Name = "WandaIntro"
@@ -117,14 +119,16 @@ task.spawn(function()
     gui:Destroy()
 end)
 
+---------------------------------------------------------------------
+-- SLOT LOOKUP: unit name -> this account's SlotNId
+---------------------------------------------------------------------
 local function findSlotId(name)
-local plr = game.Players.LocalPlayer
     for n = 1, 5 do
-        local slotname =  plr:GetAttribute("Slot" .. n) == name
-        
-        if slotname then
-            local slotid = plr:GetAttribute("Slot" .. n)
-            return tostring(plr:GetAttribute("Slot" .. n .. "Id"))
+        if plr:GetAttribute("Slot" .. n) == name then
+            local id = plr:GetAttribute("Slot" .. n .. "Id")
+            if id ~= nil then
+                return tostring(id), n
+            end
         end
     end
 end
@@ -142,7 +146,7 @@ end
 
 local function gettime()
     local ok, r = pcall(function()
-        return Players.LocalPlayer.PlayerGui.TopbarStandard.Holders.Left.Widget
+        return plr.PlayerGui.TopbarStandard.Holders.Left.Widget
             .IconButton.Menu.IconSpot.Contents.IconLabelContainer.IconLabel.Text
     end)
     return ok and tostring(r) or nil
@@ -170,11 +174,11 @@ local function parseLine(text)
     local d = { Category = cat, Time = time, Sec = sec(time) }
 
     if cat == "TowerAdd" then
-        d.Name   = text:match('Name = "(.-)"')
-        d.Index  = tonumber(text:match("Index = (%d+)"))
+        d.Name  = text:match('Name = "(.-)"')
+        d.Index = tonumber(text:match("Index = (%d+)"))
         local pos = text:match("Pos = (%b{})")
         local cf  = text:match("CFrame = (%b{})")
-        if not (d.Name and d.UnitId and pos and cf) then return end
+        if not (d.Name and pos and cf) then return end
         d.Pos, d.CFrame = nums(pos), nums(cf)
 
     elseif cat == "TowerUpgrade" or cat == "TowerSell" then
@@ -198,7 +202,7 @@ end
 local lines, votes = {}, {}
 local placed = 0
 local free = {}          -- old logs only: towers without a recorded id yet
-local idToIndex = {} fUn    -- old logs only: recorded id -> placement number
+local idToIndex = {}     -- old logs only: recorded id -> placement number
 
 for _, text in ipairs(readfile(FILE):split("\n")) do
     local d = parseLine(text)
@@ -286,7 +290,7 @@ end
 ---------------------------------------------------------------------
 local function getAutoSkip()
     local ok, btn = pcall(function()
-        return Players.LocalPlayer.PlayerGui.GameUI.Stats.AutoSkip.Button
+        return plr.PlayerGui.GameUI.Stats.AutoSkip.Button
     end)
     if ok and btn then return btn, btn:FindFirstChild("UI2") end
 end
@@ -310,11 +314,17 @@ end
 local actions = {}
 
 actions.TowerAdd = function(d)
+    local slotId = findSlotId(d.Name)
+    if not slotId then
+        warn("  not equipped:", d.Name)
+        return
+    end
+
     local cf = CFrame.new(table.unpack(d.CFrame))
 
     send("TowerAdd", {
         Name = d.Name,
-        UnitId =  findSlotId(Name),
+        UnitId = slotId,
         Pos = Vector3.new(table.unpack(d.Pos)),
         CFrame = cf,
     })
@@ -375,13 +385,12 @@ end
 -- AUTO PLAY AGAIN (watch GameUI.FinalUI.Visible)
 ---------------------------------------------------------------------
 if AUTO_PLAY_AGAIN then
-    -- remove the watcher from a previous run so it never fires twice
     if getgenv().WandaFinalConn then
         pcall(function() getgenv().WandaFinalConn:Disconnect() end)
     end
 
     task.spawn(function()
-        local final = Players.LocalPlayer:WaitForChild("PlayerGui")
+        local final = plr:WaitForChild("PlayerGui")
             :WaitForChild("GameUI"):WaitForChild("FinalUI")
 
         local busy = false
@@ -411,6 +420,9 @@ end
 local Running = true
 getgenv().StopPlayback = function() Running = false end
 
+-- wait for the slot attributes before the first vote / placement
+repeat task.wait() until plr:GetAttribute("Slot1") ~= nil
+
 for _, d in ipairs(votes) do
     local ok, err = pcall(send, "ModeVote", d.Value)
     print(ok and "Played" or "FAILED", "ModeVote", d.Value, ok and "" or err)
@@ -426,9 +438,9 @@ while Running and i <= #lines do
         local ok, err = pcall(actions[d.Category], d)
         print(ok and "Played" or "FAILED", d.Category, d.Time, ok and "" or err)
         i += 1
-        task.wait(ResDlay)
+        task.wait(ResDlay)   -- pause after each action
     else
-        task.wait(ResDlay)
+        task.wait(0.1)       -- poll the clock quickly
     end
 end
 
