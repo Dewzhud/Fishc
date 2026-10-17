@@ -136,7 +136,7 @@ end
 ---------------------------------------------------------------------
 -- BASICS
 ---------------------------------------------------------------------
-local CATS = { "ModeVote", "TowerAdd", "TowerUpgrade", "TowerSell", "WaveSkip", "PlayAgain", "AutoSkip" }
+local CATS = { "ModeVote", "TowerAdd", "TowerUpgrade", "TowerSell", "WaveSkip", "PlayAgain", "AutoSkip", "ChangeSpeed" }
 local TOL = 0.09   -- how close the model pivot must be to the placed position
 
 local function sec(t)
@@ -191,6 +191,9 @@ local function parseLine(text)
 
     elseif cat == "AutoSkip" then
         d.Value = text:match('Value = "(%a+)"') == "true"
+ elseif cat == "ChangeSpeed" then
+    local raw = text:match('Value = "([^"]*)"') or text:match("Value = ([%d%.%-]+)")
+    d.Value = tonumber(raw) or raw
     end
 
     return d
@@ -361,6 +364,9 @@ actions.WaveSkip = function() send("WaveSkip") end
 actions.PlayAgain = function()
     if AUTO_PLAY_AGAIN then return end   -- the FinalUI watcher handles it
     send("PlayAgain")
+end
+actions.ChangeSpeed = function(d)
+    send("ChangeSpeed", d.Value)
 end
 
 actions.AutoSkip = function(d)
