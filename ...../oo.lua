@@ -81,7 +81,7 @@ gen["TowerAdd"] = function(Args, Time)
     local cf = data.CFrame or (data.Pos and CFrame.new(data.Pos))
     if cf then trackNewTower(cf, index) end
 
-    append(`TowerAdd \{ Index = {index}, Name = "{data.Name}", UnitId = "{data.UnitId}", Pos = \{{data.Pos}}, CFrame = \{{data.CFrame}}, Time = "{Time}"}`)
+    append(`TowerAdd \{ Index = {index}, Name = "{data.Name}", Pos = \{{data.Pos}}, CFrame = \{{data.CFrame}}, Time = "{Time}"}`)
 end
 
 gen["TowerUpgrade"] = function(Args, Time)
