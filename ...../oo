@@ -116,6 +116,9 @@ gen["ModeVote"] = function(Args, Time)
     append(`ModeVote \{ Value = "{Args[1]}", Time = "{Time}"}`)
 end
 
+gen["ChangeSpeed"] = function(Args,Time)
+ append(`ChangeSpeed \{ Value = "{Args[1]}", Time = "{Time}"}`)
+end
 -- AutoSkip: log UI2.Visible whenever it changes
 task.spawn(function()
     local ok, ui2 = pcall(function()
@@ -141,16 +144,18 @@ end)
 
 local OldNamecall
 OldNamecall = hookmetamethod(game, "__namecall", newcclosure(function(self, ...)
-    if getnamecallmethod() == "FireServer"
-        and typeof(self) == "Instance"
-        and self.ClassName == "RemoteEvent"
-        and not checkcaller()
-    then
-        local handler = gen[self.Name]
-        if handler then
-            local args = table.pack(...)
-            local time = gettime()
-            task.spawn(pcall, handler, args, time)
+    if typeof(self) == "Instance" and not checkcaller() then
+        local method = getnamecallmethod()
+
+        if (method == "FireServer" and self.ClassName == "RemoteEvent")
+            or (method == "InvokeServer" and self.ClassName == "RemoteFunction")
+        then
+            local handler = gen[self.Name]
+            if handler then
+                local args = table.pack(...)
+                local time = gettime()
+                task.spawn(pcall, handler, args, time)
+            end
         end
     end
 
