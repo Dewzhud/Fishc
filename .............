@@ -117,6 +117,17 @@ task.spawn(function()
     gui:Destroy()
 end)
 
+local function findSlotId(name)
+    for n = 1, 5 do
+        local slotname =  plr:GetAttribute("Slot" .. n) == name
+        
+        if slotname then
+            local slotid = plr:GetAttribute("Slot" .. n)
+            return tostring(plr:GetAttribute("Slot" .. n .. "Id"))
+        end
+    end
+end
+
 ---------------------------------------------------------------------
 -- BASICS
 ---------------------------------------------------------------------
@@ -159,7 +170,6 @@ local function parseLine(text)
 
     if cat == "TowerAdd" then
         d.Name   = text:match('Name = "(.-)"')
-        d.UnitId = text:match('UnitId = "(.-)"')
         d.Index  = tonumber(text:match("Index = (%d+)"))
         local pos = text:match("Pos = (%b{})")
         local cf  = text:match("CFrame = (%b{})")
@@ -187,7 +197,7 @@ end
 local lines, votes = {}, {}
 local placed = 0
 local free = {}          -- old logs only: towers without a recorded id yet
-local idToIndex = {}     -- old logs only: recorded id -> placement number
+local idToIndex = {} fUn    -- old logs only: recorded id -> placement number
 
 for _, text in ipairs(readfile(FILE):split("\n")) do
     local d = parseLine(text)
@@ -303,7 +313,7 @@ actions.TowerAdd = function(d)
 
     send("TowerAdd", {
         Name = d.Name,
-        UnitId = d.UnitId,
+        UnitId =  findSlotId(Name),
         Pos = Vector3.new(table.unpack(d.Pos)),
         CFrame = cf,
     })
