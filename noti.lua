@@ -13,7 +13,7 @@ local playerGui = player:WaitForChild("PlayerGui")
 -- THEME ---------------------------------------------------------------
 local THEME = {
 	Background = Color3.fromRGB(15, 15, 15),   -- black
-	Accent     = Color3.fromRGB(220, 20, 40),  -- red
+	Accent     = Color3.fromRGB(255, 255, 255),  -- red
 	Text       = Color3.fromRGB(255, 255, 255),-- white
 	SubText    = Color3.fromRGB(190, 190, 190),
 }
